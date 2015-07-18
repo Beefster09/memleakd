@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-g -O2 -std=gnu99
 OBJECTS=main.o
-SOURCES=main.c daemon.c rules.c
+SOURCES=main.c daemon.c rules.c util.c
 HEADERS=daemon.h rules.h const.h
 TARGET=../bin/memleakd
 

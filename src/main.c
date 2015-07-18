@@ -8,12 +8,17 @@
 #include <stdbool.h>
 
 #include "const.h"
+#include "util.c"
 
 #include "rules.c"
 #include "daemon.c"
 
 int main() {
-    rule_list rules = parse_rules("rules.cfg");
+    rule_list rules = parse_rules("/etc/default/memleakd");
+    printf("%i rules loaded...\n", rules.size);
+    for (int i=0; i<rules.size; ++i) {
+        print_rule(rules.data[i]);
+    }
     run_daemon(rules, DEFAULT_POLL_RATE);
     return 0;
 }

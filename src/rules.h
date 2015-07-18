@@ -25,13 +25,16 @@ typedef struct rule {
 } rule;
 
 typedef struct rule_list {
-    rule* head;
+    rule* data;
     unsigned int size;
 } rule_list;
 
 rule_list parse_rules(char* filename);
 
-void print_rule(rule r);
+bool match_rule(rule r, char* procname);
+void do_rule_action(rule r, pid_t pid);
+
 char* rule_action_str(rule r);
+void print_rule(rule r);
 
 #endif
