@@ -36,7 +36,6 @@ void run_daemon(rule_list rules, int poll_rate) {
 
                 for (int i=0; i<rules.size; ++i) {
                     if (match_rule(rules.data[i], procname)) {
-                        printf("Found a matching process: %s (%s)\n", procname, entry->d_name);
                         // get memory info
                         sprintf(statpath, "/proc/%i/statm", pid);
                         file = fopen(statpath, "r");
@@ -45,10 +44,9 @@ void run_daemon(rule_list rules, int poll_rate) {
                         rss *= 4 * KB; // RSS memory is given in 4 KB chunks
                         fclose(file);
                         if (chk == 1) {
-                            printf("%s %lu\n", procname, rss);
                             if (rss > rules.data[i].mem_limit) {
+                                printf("Process has exceeded its limit: %s %lu\n", procname, rss);
                                 do_rule_action(rules.data[i], pid);
-                                print_rule(rules.data[i]);
                             }
                         }
                     }

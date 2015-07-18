@@ -31,7 +31,7 @@ typedef struct rule_list {
 
 rule_list parse_rules(char* filename);
 
-bool match_rule(rule r, char* procname);
+bool match_rule(rule r, const char* procname);
 void do_rule_action(rule r, pid_t pid);
 
 char* rule_action_str(rule r);

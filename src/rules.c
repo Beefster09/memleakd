@@ -45,6 +45,7 @@ rule_list parse_rules(char* filename) {
 
     while (getline(&line, &size, file) != -1) {
         int pos = 0;
+        bool valid = true;
 
         if (!isspace(line[pos])) {
             if (rules.size == capacity) {
@@ -65,9 +66,19 @@ rule_list parse_rules(char* filename) {
                         namestr[i++] = line[pos++];
                     }
                     namestr[i] = 0;
-                    regex_t re;
-                    regcomp(&re, namestr, 0);
-                    rules.data[rules.size].match_data = &re;
+                    // The regex buffer NEEDS to be on the heap
+                    // If it's on the stack, it will get overridden with junk later
+                    regex_t* re = malloc(sizeof(regex_t));
+                    int err;
+                    if (err = regcomp(re, namestr, REG_EXTENDED|REG_NOSUB)) {
+                        //Error
+                        char errbuf[128];
+                        regerror(err, re, errbuf, 128);
+                        printf("Error in parsing the regex /%s/:\n%s\n", namestr, errbuf);
+                        valid = false;
+                    }
+                    printf("Status from parsing regex /%s/: %i\n", namestr, err);
+                    rules.data[rules.size].match_data = re;
                     break;
                 case '"': // Exact
                     rules.data[rules.size].match_type = EXACT;
@@ -138,7 +149,7 @@ rule_list parse_rules(char* filename) {
                 for( ; line[pos] && line[pos] != '{'; ++pos);
                 if (line[pos] != '{') break; // invalid rule
 
-                shellsize = 4*KB;
+                shellsize = 512;
                 shellstr = malloc(shellsize);
                 shelldepth = 1;
                 shellpos = 0;
@@ -147,7 +158,7 @@ rule_list parse_rules(char* filename) {
                 do {
                     while (line[pos]) {
                         if (shellpos >= shellsize - 1) {
-                            shellsize += 4*KB;
+                            shellsize += 512;
                             shellstr = realloc(shellstr, shellsize);
                         }
                         if (line[pos] == '\\' && (line[pos+1] == '{' || line[pos+1] == '}')) ++pos;
@@ -171,7 +182,7 @@ rule_list parse_rules(char* filename) {
                 rules.data[rules.size].action_data = shellstr;
             }
 
-            ++rules.size;
+            if (valid) ++rules.size;
         }
     }
 
@@ -181,21 +192,18 @@ rule_list parse_rules(char* filename) {
     return rules;
 }
 
-bool match_rule(rule r, char* procname) {
+bool match_rule(rule r, const char* procname) {
     switch(r.match_type) {
         case EXACT:
             return strcmp((char *) r.match_data, procname) == 0;
         case SUBSTRING:
             return strstr(procname, (char *) r.match_data) != NULL;
-        case REGEX: ;
-            //regmatch_t matches; // On stack; will auto-dispose
+        case REGEX:
             return regexec((regex_t *) r.match_data, procname, 0, NULL, 0) == 0;
         default:
             return false;
     }
 }
-
-
 
 void do_rule_action(rule r, pid_t pid) {
     switch (r.action_type) {
@@ -254,7 +262,7 @@ void print_rule(rule r) {
             printf("%s %lu %s\n", (char *) r.match_data, r.mem_limit, rule_str);
             break;
         case REGEX:
-            printf("/%s/ %lu %s\n", (char *) r.match_data, r.mem_limit, rule_str);
+            printf("<REGEX> %lu %s\n", r.mem_limit, rule_str);
             break;
         default:
             printf("?%s? %lu %s\n", (char *) r.match_data, r.mem_limit, rule_str);
